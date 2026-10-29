@@ -1,0 +1,54 @@
+# ---- Dependencies ----
+node_modules/
+.pnp
+.pnp.js
+bower_components/
+vendor/
+
+# ---- Build output ----
+dist/
+build/
+out/
+.output/
+.next/
+.nuxt/
+.svelte-kit/
+.parcel-cache/
+.turbo/
+target/
+*.tsbuildinfo
+coverage/
+
+# ---- Caches / tooling ----
+.cache/
+.vite/
+.eslintcache
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# ---- Logs ----
+*.log
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---- Secrets (never commit real values) ----
+.env
+.env.local
+.env.*.local
+.env.production
+*.pem
+*.key
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
