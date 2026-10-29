@@ -41,25 +41,101 @@ is 134 MB, about 80% of it is `node_modules/` and build output — content that 
 
 ### Build the correct zip
 
+> **`C:\path\to\YourProject` below is a placeholder.** Replace it with the real
+> folder, e.g. `C:\Users\Shuvo\Documents\Menutarbo-pro`. If you have not cloned
+> this repo, the script files are not on your machine — use **Option 1**, which
+> needs nothing downloaded.
+
+#### Option 1 — no script needed (works immediately)
+
+Move the heavy folders out, then use the normal Windows "Compress" button:
+
+1. Open your project folder in File Explorer.
+2. **Drag `node_modules` out** to your Desktop (don't delete — you may want it).
+   Do the same for `dist`, `.next`, `build`, `out`, `venv` if present.
+3. Right-click the project folder → **Compress to ZIP file**.
+4. Upload the zip.
+5. Move `node_modules` back and it keeps working; if not, `npm install` restores it.
+
+This alone turns a 134 MB folder into a few MB.
+
+#### Option 2 — one paste, no repo clone
+
+Paste this whole block into PowerShell. It copies only source files to a temp
+folder, zips that, and prints the size:
+
+```powershell
+$proj = "C:\Users\Shuvo\Documents\Menutarbo-pro"   # <-- CHANGE THIS to your real folder
+$tmp  = Join-Path $env:TEMP "cleanzip"
+$out  = Join-Path $env:USERPROFILE ((Split-Path $proj -Leaf) + "-clean.zip")
+
+if (-not (Test-Path $proj)) { Write-Host "Folder not found: $proj" -ForegroundColor Red; return }
+if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
+
+robocopy $proj $tmp /E /XD node_modules dist build out .next .nuxt .output `
+  .svelte-kit .turbo .parcel-cache .vite coverage target .git .cache `
+  __pycache__ .venv venv .pytest_cache .mypy_cache .idea `
+  /XF *.zip *.rar *.7z *.log *.mp4 *.mov *.avi `.env` `.env.local` | Out-Null
+
+Compress-Archive -Path "$tmp\*" -DestinationPath $out -Force
+Remove-Item $tmp -Recurse -Force
+
+$mb = [math]::Round((Get-Item $out).Length / 1MB, 2)
+Write-Host "Created $out ($mb MB)" -ForegroundColor Green
+```
+
+Note: `robocopy` exit codes 0–7 mean success; no error means it worked even
+though it prints nothing.
+
+#### Option 3 — the repo scripts (after cloning this repo)
+
 ```bash
-# macOS / Linux
-bash scripts/make-clean-zip.sh /path/to/Menutarbo-pro
+# macOS / Linux — run from inside the cloned repo
+bash scripts/make-clean-zip.sh /full/path/to/your/project
 ```
 
 ```powershell
-# Windows
-.\scripts\make-clean-zip.ps1 -Path C:\path\to\Menutarbo-pro
+# Windows — run from inside the cloned repo
+cd C:\path\to\cloned\Menutarbo-pro
+.\scripts\make-clean-zip.ps1 -Path "C:\Users\Shuvo\Documents\your-project"
 ```
 
-Both print how much each excluded folder was costing you, then write
-`<project>-clean.zip`. They keep source **and** dot-files (`.gitignore`,
-`.env.example`, `.github/`) and drop dependencies, builds, caches, `.env`
-secrets, and media over the size that breaks uploads.
+All three keep source **and** dot-files (`.gitignore`, `.env.example`,
+`.github/`) and drop dependencies, builds, caches, `.env` secrets and oversized
+media.
 
 Find what is big before zipping:
 
 ```bash
 find . -type f -size +5M -not -path './node_modules/*' -printf '%s\t%p\n' | sort -rn | head -20
+```
+
+```powershell
+# Windows equivalent, and a size table for the top-level folders
+Get-ChildItem -Recurse -File | Where-Object Length -gt 5MB |
+  Sort-Object Length -Descending | Select-Object -First 20 FullName, Length
+Get-ChildItem -Directory | ForEach-Object {
+  $s = (Get-ChildItem $_.FullName -Recurse -File -ErrorAction SilentlyContinue |
+        Measure-Object Length -Sum).Sum
+  [pscustomobject]@{ Folder = $_.Name; MB = [math]::Round($s/1MB,1) }
+} | Sort-Object MB -Descending
+```
+
+### Troubleshooting
+
+| Error | Cause | Fix |
+|---|---|---|
+| `The term '.\scripts\make-clean-zip.ps1' is not recognized` | you are not inside the cloned repo — `.\` means *current folder* | `cd` into the repo first, or use Option 1 / Option 2 above |
+| `Folder not found: C:\path\to\...` | `C:\path\to\...` is a placeholder, not a real path | use the real folder, e.g. `C:\Users\Shuvo\Documents\Menutarbo-pro` |
+| `Compress-Archive: file not found` | the project path has a typo or a trailing space | `Test-Path` the folder first |
+| script does nothing, no error | `robocopy` returns 0–7 on success | check the output zip exists |
+| `running scripts is disabled on this system` | PowerShell execution policy | `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` |
+
+To find your project folder when you're unsure where it is:
+
+```powershell
+Get-ChildItem C:\Users\Shuvo -Recurse -Filter package.json -Depth 4 -ErrorAction SilentlyContinue |
+  Where-Object FullName -NotMatch 'node_modules' | Select-Object -First 10 FullName
 ```
 
 ### If a large file was already committed
