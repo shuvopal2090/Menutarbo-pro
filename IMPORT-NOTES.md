@@ -42,19 +42,69 @@ The 5 small `.ttf` fonts and `resource/public/index.html` **are** included.
 
 ## Running it
 
+### One command (recommended)
+
 ```bash
-cp config.example.toml config.toml     # then add your API keys
-pip install -r requirements.txt        # or: uv sync
-python main.py                         # or: streamlit run webui/Main.py
+bash scripts/setup.sh
 ```
+
+```powershell
+.\scripts\setup.ps1
+```
+
+Creates the virtualenv, installs dependencies, writes `config.toml`, downloads
+the 206 MB of runtime assets, and runs a preflight check. Safe to re-run — every
+step is skipped when already satisfied.
+
+Options: `--skip-resources` / `-SkipResources` to skip the asset download,
+`--force` / `-Force` to rebuild the virtualenv.
+
+### Start
+
+```bash
+python scripts/run.py web      # WebUI -> http://localhost:8501
+python scripts/run.py api      # API   -> http://localhost:8080/docs
+```
+
+### Manual
+
+```bash
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cp config.example.toml config.toml                  # then add API keys
+python main.py                                      # or: streamlit run webui/Main.py
+```
+
+### Preflight check
+
+```bash
+python scripts/doctor.py
+```
+
+Verifies Python version, dependencies, ffmpeg, config, runtime assets and free
+ports. Exit code 0 = ready. Use it whenever something "doesn't start" — it names
+the actual cause instead of leaving you with a stack trace.
+
+## Things that already work, so you don't have to fix them
+
+| Concern | Status |
+|---|---|
+| **ffmpeg** | Not needed. `imageio-ffmpeg` ships a static binary; the doctor confirms it resolves. |
+| **config.toml** | Auto-created from `config.example.toml` on first run. Never commit it — it holds keys. |
+| **Python version** | Needs 3.11+. The setup scripts detect it and refuse to continue otherwise. |
+| **Windows** | Full path: `setup.ps1` → `run.py`. If scripts are blocked: `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`. |
+| **Remote/container use** | `run.py` sets the Streamlit flags (`enableCORS`, `enableXsrfProtection`, bind `0.0.0.0`) needed for a browser not on localhost. |
 
 ## Repository tooling (added during import)
 
 | File | Purpose |
 |---|---|
+| `scripts/setup.sh` / `setup.ps1` | one-command bootstrap: venv, deps, config, assets, check |
+| `scripts/doctor.py` | preflight diagnosis — run this first when something fails |
+| `scripts/run.py` | launcher for WebUI and API with the correct flags |
 | `scripts/verify-import.sh` | read-only completeness check for an import |
-| `scripts/make-clean-zip.sh` / `.ps1` | build an upload-ready zip, excluding dependencies and builds |
 | `scripts/fetch-resources.sh` / `.ps1` | restore the excluded binary assets |
+| `scripts/make-clean-zip.sh` / `.ps1` | build an upload-ready zip, excluding dependencies and builds |
 
 ## Notes on the original upload problem
 
